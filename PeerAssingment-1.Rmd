@@ -1,0 +1,166 @@
+---
+title: "Peer Assignment-1"
+author: "Socrates"
+date: "Saturday, February 14, 2015"
+output: html_document
+---
+
+<br>
+<br>
+
+### 1. Loading and preprocessing the data
+#### Setting Working Directory 
+```{r, echo=TRUE}
+source_url <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+target_file <- "activity.zip"
+dest_folder <- "C:\\courses\\5-Reproducible Research\\Project"
+data_folder <- "C:\\courses\\5-Reproducible Research\\Project\\data"
+setwd(dest_folder)
+```
+
+#### Downloading files
+```{r, echo=TRUE}
+setInternet2(use = TRUE)
+download.file(source_url, target_file)
+unzip(target_file, exdir=data_folder)
+```
+
+#### Loading Data into R working Enviornment
+```{r, echo=TRUE}
+file <- list.files(data_folder, full.names=TRUE)
+data <- read.csv(file, sep=",", header=TRUE, colClasses=c('numeric', 'character', 'numeric'))
+```
+<br>
+<br>
+
+### 2. What is mean total number of steps taken per day?
+
+#### Convert Date class from <code>Character</code> to <code>Date</code>
+```{r, echo=TRUE}
+data$date <- as.Date(data$date, format="%Y-%m-%d")
+```
+
+#### Calculate the total number of steps taken per day
+```{r, echo=TRUE}
+totalval <- aggregate(steps ~ date, data = data, sum)
+```
+
+```{r, echo=FALSE}
+origsum <- sum(totalval[,2])
+origcnt <- length(totalval[,2])
+```
+
+#### Make a histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+hist(totalval[,2], xlab="No of Steps", main='', breaks = 30, col='blue')
+```
+
+#### Calculate Mean value
+```{r, echo=TRUE}
+meanval <- round(mean(totalval[,2], na.rm=TRUE))
+meanval
+```
+
+#### Calculate Median value
+```{r, echo=TRUE}
+medianval <- round(median(totalval[,2], na.rm=TRUE))
+medianval
+```
+<br>
+<br>
+
+### 3. What is the average daily activity pattern?
+
+#### Time series plot. x-axis: Average number of steps taken; y-axis: Averaged across all days
+```{r, echo=TRUE}
+meaninterval <- aggregate(steps ~ interval, data=data, mean, na.rm=TRUE)
+plot(meaninterval$steps ~ meaninterval$interval, type = "l", xlab='Period', col='blue', ylab='Average No of Steps', main='')
+```
+
+#### Which 5-minute interval containing maximum number of steps?
+```{r, echo=TRUE}
+meaninterval[(meaninterval$steps==max(meaninterval$steps)),1]
+```
+<br>
+<br>
+
+### 4. Imputing missing values
+#### Calculate and report the total number of missing values in the dataset
+```{r, echo=TRUE}
+nrow(data[data$steps == 'NA',])
+```
+
+#### Strategy for filling in all of the missing values: The mean for that 5-minute interval.
+```{r, echo=TRUE}
+meaninterval <- aggregate(steps ~ interval, data=data, mean, na.rm=TRUE)
+meaninterval$steps <- round(meaninterval$steps)
+```
+
+
+#### Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r, echo=TRUE}
+for (i in 1:nrow(meaninterval)) {
+
+  # returns 0, 5, 10, 15, ...
+	intr.val <- meaninterval$interval[i]
+	upd.df <- length(data[which(data$interval == intr.val & is.na(data$steps)),]$steps)
+	if (upd.df > 0) {
+		data[which(data$interval == intr.val & is.na(data$steps)),]$steps <- meaninterval$steps[meaninterval$interval == intr.val]
+	}
+}
+```
+
+
+#### Make a histogram of the total number of steps taken each day on new dataset
+```{r, echo=TRUE}
+totalval <- aggregate(steps ~ date, data = data, sum)
+hist(totalval[,2], xlab="No of Steps", main='', col='blue', breaks = 30)
+```
+
+
+```{r, echo=FALSE}
+revsum <- sum(totalval[,2])
+revcnt <- length(totalval[,2])
+```
+
+#### Calculate and report Mean total number of steps taken per day.
+```{r, echo=TRUE}
+meanval <- round(mean(totalval[,2], na.rm=TRUE))
+meanval
+```
+
+#### Calculate and report Median total number of steps taken per day.
+```{r, echo=TRUE}
+medianval <- round(median(totalval[,2], na.rm=TRUE))
+medianval
+```
+
+#### Do these values differ from the estimates from the first part of the assignment? 
+<code>YES, They differ.</code>
+
+#### What is the impact of imputing missing data on the estimates of the total daily number of steps?
+<code>
+After imputing missing data, the Total Sum got increased from `r origsum` to `r revsum`. <br>
+However the mean and median values remain same. This is due to the fact that the no of days <br>
+in original dataset increased from `r origcnt` to `r revcnt` after populating values for "NA"</code>
+<br>
+<br>
+
+
+
+### 5. Are there differences in activity patterns between weekdays and weekends?
+
+#### Create a new factor variable in the dataset with two levels - "weekday" and "weekend" 
+```{r, echo=TRUE}
+data$dayname <- weekdays(data$date)
+data$daytype <- ifelse(data$dayname %in% c("Saturday", "Sunday"), "weekend", "weekday")
+```
+
+#### Panel plot containing a time series plot 
+```{r, echo=TRUE}
+library(lattice) 
+meansteps <- aggregate(data$steps, by = list(data$interval, data$daytype), mean)
+names(meansteps) <- c("interval", "daytype", "steps")
+xyplot(steps ~ interval | daytype, meansteps, type = "l", layout = c(1, 2), xlab = "Interval", ylab = "Number of steps")
+```
+
