@@ -163,4 +163,3 @@ meansteps <- aggregate(data$steps, by = list(data$interval, data$daytype), mean)
 names(meansteps) <- c("interval", "daytype", "steps")
 xyplot(steps ~ interval | daytype, meansteps, type = "l", layout = c(1, 2), xlab = "Interval", ylab = "Number of steps")
 ```
-
